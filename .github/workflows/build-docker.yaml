@@ -1,6 +1,9 @@
 name: Build and Push to Docker Hub
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: '0 3 * * *'  # Every day at 03:00 UTC
   workflow_dispatch:
@@ -22,9 +25,15 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Get date-based version tag
+      id: version
+      run: echo "tag=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
         push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/custom-s3-exporter:latest
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/custom-s3-exporter:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/custom-s3-exporter:${{ steps.version.outputs.tag }}
