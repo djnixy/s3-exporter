@@ -1,51 +1,47 @@
 import boto3
 import os
 import time
+import yaml
 from datetime import datetime, timezone
 from prometheus_client import start_http_server, Gauge
 
-# Define Prometheus metric
+# Prometheus metric
 last_modified_metric = Gauge(
     's3_object_last_modified_timestamp_seconds',
     'Last modified time of S3 object',
     ['bucket', 'key']
 )
 
-def load_files_from_env():
-    """Load file list from numbered environment variables like S3_FILE_0_BUCKET, S3_FILE_0_KEY"""
-    files = []
-    i = 0
-    while True:
-        bucket = os.getenv(f'S3_FILE_{i}_BUCKET')
-        key = os.getenv(f'S3_FILE_{i}_KEY')
-        if not bucket or not key:
-            break
-        files.append({'bucket': bucket, 'key': key})
-        i += 1
-    return files
+def load_config_from_yaml(path='config.yaml'):
+    with open(path, 'r') as f:
+        cfg = yaml.safe_load(f)
+    return cfg
 
-def load_config_from_env():
-    """Load configuration from environment variables"""
-    return {
-        'endpoint_url': os.getenv('S3_ENDPOINT_URL'),
-        'region': os.getenv('S3_REGION', 'us-east-1'),
-        'access_key': os.getenv('S3_ACCESS_KEY'),
-        'secret_key': os.getenv('S3_SECRET_KEY'),
-        'files': load_files_from_env()
-    }
+def apply_global_config(cfg):
+    global_bucket = cfg.get('global', {}).get('bucket')
+    global_prefix = cfg.get('global', {}).get('prefix', '')
+
+    for file in cfg.get('files', []):
+        # Apply default bucket if missing
+        if 'bucket' not in file and global_bucket:
+            file['bucket'] = global_bucket
+
+        # Apply prefix to key if it's not already prefixed
+        if global_prefix and not file['key'].startswith(global_prefix):
+            file['key'] = global_prefix + file['key']
+
+    return cfg
 
 def create_s3_client(cfg):
-    """Create a boto3 S3 client"""
     return boto3.client(
         's3',
-        endpoint_url=cfg['endpoint_url'],
-        region_name=cfg['region'],
-        aws_access_key_id=cfg['access_key'],
-        aws_secret_access_key=cfg['secret_key']
+        endpoint_url=cfg.get('endpoint_url'),
+        region_name=cfg.get('region', 'us-east-1'),
+        aws_access_key_id=cfg.get('access_key'),
+        aws_secret_access_key=cfg.get('secret_key')
     )
 
 def update_metrics(s3, files):
-    """Update Prometheus metrics for each monitored file"""
     for file in files:
         bucket = file['bucket']
         key = file['key']
@@ -58,19 +54,21 @@ def update_metrics(s3, files):
             print(f"❌ Error checking {bucket}/{key}: {e}")
 
 def main():
-    config = load_config_from_env()
-    s3 = create_s3_client(config)
-    files = config['files']
+    config_path = os.getenv('CONFIG_PATH', 'config.yaml')
+    config = apply_global_config(load_config_from_yaml(config_path))
+
+    s3 = create_s3_client(config['s3'])
+    files = config.get('files', [])
 
     if not files:
         print("⚠️ No files configured. Exiting.")
         return
 
-    port = int(os.getenv('EXPORTER_PORT', '9101'))
+    port = config.get('exporter', {}).get('port', 9101)
+    interval = config.get('exporter', {}).get('check_interval_seconds', 300)
+
     print(f"📡 Starting Prometheus exporter on port {port}")
     start_http_server(port)
-
-    interval = int(os.getenv('CHECK_INTERVAL_SECONDS', '300'))
 
     while True:
         update_metrics(s3, files)
