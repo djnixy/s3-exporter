@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the exporter code
-COPY s3_exporter.py config.yaml ./
+COPY s3_exporter.py .
 
 EXPOSE 9101
 
