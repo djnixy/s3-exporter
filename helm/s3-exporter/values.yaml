@@ -2,6 +2,36 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+global:
+  bucket: s3-odoo-database-backup
+  prefix: production/
+  existingSecret: bws-monitoring-global
+  secretKeys:
+    access_key: example-aws-access-key-id
+    secret_key: example-aws-secret-access-key
+  s3:
+    endpoint_url: https://s3.amazonaws.com
+    region: ap-southeast-2
+
+files:
+  - key: "path1/file1.zip"
+  - key: "path2/file2.zip"
+
+exporter:
+  port: 9101
+  checkIntervalSeconds: 300
+
+service:
+  type: ClusterIP
+  port: 9101
+
+resources:
+  limits:
+    memory: 50Mi
+  requests:
+    cpu: 50m
+    memory: 50Mi
+
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
 
@@ -49,13 +79,6 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
-# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
-service:
-  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  type: ClusterIP
-  # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
-  port: 80
-
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
@@ -72,18 +95,6 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
-
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
