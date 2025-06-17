@@ -67,10 +67,10 @@ spec:
 {{- range $index, $file := .Values.files }}
             - name: FILE_{{ $index }}_KEY
               value: {{ $file.key | quote }}
-            {{- if $file.bucket }}
+  {{- if $file.bucket }}
             - name: FILE_{{ $index }}_BUCKET
               value: {{ $file.bucket | quote }}
-            {{- end }}
+  {{- end }}
 {{- end }}
 
 
