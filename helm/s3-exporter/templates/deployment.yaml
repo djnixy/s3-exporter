@@ -51,14 +51,14 @@ spec:
               value: {{ .Values.global.s3.region | default "us-east-1" }}
             - name: GLOBAL_SECRET_KEYS_ACCESS_KEY
               valueFrom:
-                secretKeyRef:
+                secretKeyRef: 
                   name: {{ .Values.global.existingSecret }}
-                  key: access_key
+                  key: {{ .Values.global.secretKeys.access_key }}
             - name: GLOBAL_SECRET_KEYS_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.global.existingSecret }}
-                  key: secret_key
+                  key: {{ .Values.global.secretKeys.secret_key }}
             - name: EXPORTER_PORT
               value: "{{ .Values.exporter.port }}"
             - name: EXPORTER_CHECK_INTERVAL_SECONDS
