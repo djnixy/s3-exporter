@@ -1,7 +1,6 @@
 import boto3
 import os
 import time
-import yaml
 from datetime import datetime, timezone
 from prometheus_client import start_http_server, Gauge
 
@@ -12,67 +11,80 @@ last_modified_metric = Gauge(
     ['bucket', 'key']
 )
 
-def load_config_from_yaml(path='config.yaml'):
-    with open(path, 'r') as f:
-        cfg = yaml.safe_load(f)
-    return cfg
+def load_files():
+    files = []
+    i = 0
+    while True:
+        key = os.getenv(f'FILE_{i}_KEY')
+        if not key:
+            break
+        bucket = os.getenv(f'FILE_{i}_BUCKET')  # optional override
+        files.append({'key': key, 'bucket': bucket})
+        i += 1
+    return files
 
-def apply_global_config(cfg):
-    global_bucket = cfg.get('global', {}).get('bucket')
-    global_prefix = cfg.get('global', {}).get('prefix', '')
+def load_config_from_env():
+    return {
+        'global': {
+            'bucket': os.getenv('GLOBAL_BUCKET'),
+            'prefix': os.getenv('GLOBAL_PREFIX', ''),
+            's3': {
+                'endpoint_url': os.getenv('GLOBAL_S3_ENDPOINT_URL'),
+                'region': os.getenv('GLOBAL_S3_REGION', 'us-east-1'),
+            },
+            'credentials': {
+                'access_key': os.getenv('GLOBAL_SECRET_KEYS_ACCESS_KEY'),
+                'secret_key': os.getenv('GLOBAL_SECRET_KEYS_SECRET_KEY'),
+            }
+        },
+        'exporter': {
+            'port': int(os.getenv('EXPORTER_PORT', 9101)),
+            'check_interval': int(os.getenv('EXPORTER_CHECK_INTERVAL_SECONDS', 300)),
+        },
+        'files': load_files()
+    }
 
-    for file in cfg.get('files', []):
-        # Apply default bucket if missing
-        if 'bucket' not in file and global_bucket:
-            file['bucket'] = global_bucket
-
-        # Apply prefix to key if it's not already prefixed
-        if global_prefix and not file['key'].startswith(global_prefix):
-            file['key'] = global_prefix + file['key']
-
-    return cfg
-
-def create_s3_client(cfg):
+def create_s3_client(global_cfg):
+    creds = global_cfg['credentials']
     return boto3.client(
         's3',
-        endpoint_url=cfg.get('endpoint_url'),
-        region_name=cfg.get('region', 'us-east-1'),
-        aws_access_key_id=cfg.get('access_key'),
-        aws_secret_access_key=cfg.get('secret_key')
+        endpoint_url=global_cfg['s3']['endpoint_url'],
+        region_name=global_cfg['s3']['region'],
+        aws_access_key_id=creds['access_key'],
+        aws_secret_access_key=creds['secret_key']
     )
 
-def update_metrics(s3, files):
+def update_metrics(s3, files, default_bucket, prefix):
     for file in files:
-        bucket = file['bucket']
-        key = file['key']
+        bucket = file.get('bucket') or default_bucket
+        key = f"{prefix}{file['key']}"
         try:
             response = s3.head_object(Bucket=bucket, Key=key)
             last_modified = response['LastModified'].replace(tzinfo=timezone.utc).timestamp()
             last_modified_metric.labels(bucket=bucket, key=key).set(last_modified)
-            print(f"✅ Updated: {bucket}/{key} -> {last_modified}")
+            print(f"✅ {bucket}/{key} -> {last_modified}")
         except Exception as e:
-            print(f"❌ Error checking {bucket}/{key}: {e}")
+            print(f"❌ Failed: {bucket}/{key}: {e}")
 
 def main():
-    config_path = os.getenv('CONFIG_PATH', 'config.yaml')
-    config = apply_global_config(load_config_from_yaml(config_path))
-
-    s3 = create_s3_client(config['s3'])
-    files = config.get('files', [])
-
+    cfg = load_config_from_env()
+    s3 = create_s3_client(cfg['global'])
+    files = cfg['files']
     if not files:
-        print("⚠️ No files configured. Exiting.")
+        print("⚠️ No files configured.")
         return
 
-    port = config.get('exporter', {}).get('port', 9101)
-    interval = config.get('exporter', {}).get('check_interval_seconds', 300)
+    port = cfg['exporter']['port']
+    interval = cfg['exporter']['check_interval']
+    default_bucket = cfg['global']['bucket']
+    prefix = cfg['global']['prefix']
 
-    print(f"📡 Starting Prometheus exporter on port {port}")
+    print(f"📡 Exporter running on port {port}")
     start_http_server(port)
 
     while True:
-        update_metrics(s3, files)
+        update_metrics(s3, files, default_bucket, prefix)
         time.sleep(interval)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
