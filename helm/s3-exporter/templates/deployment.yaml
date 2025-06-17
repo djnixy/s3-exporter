@@ -64,14 +64,15 @@ spec:
             - name: EXPORTER_CHECK_INTERVAL_SECONDS
               value: "{{ .Values.exporter.checkIntervalSeconds }}"
 
-          {{- range $index, $file := .Values.files }}
+{{- range $index, $file := .Values.files }}
             - name: FILE_{{ $index }}_KEY
               value: {{ $file.key | quote }}
             {{- if $file.bucket }}
             - name: FILE_{{ $index }}_BUCKET
               value: {{ $file.bucket | quote }}
             {{- end }}
-          {{- end }}
+{{- end }}
+
 
           # {{- with .Values.livenessProbe }}
           # livenessProbe:
