@@ -10,7 +10,7 @@ global:
     access_key: example-aws-access-key-id
     secret_key: example-aws-secret-access-key
   s3:
-    endpoint_url: https://s3.amazonaws.com
+    endpoint_url: 
     region: ap-southeast-2
 
 files:
