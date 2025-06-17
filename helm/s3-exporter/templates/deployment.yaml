@@ -40,10 +40,39 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
-          {{- with .Values.env }}
           env:
-            {{- toYaml . | nindent 12 }}
+            - name: GLOBAL_BUCKET
+              value: {{ .Values.global.bucket }}
+            - name: GLOBAL_PREFIX
+              value: {{ .Values.global.prefix | default "" }}
+            - name: GLOBAL_S3_ENDPOINT_URL
+              value: {{ .Values.global.s3.endpoint_url }}
+            - name: GLOBAL_S3_REGION
+              value: {{ .Values.global.s3.region | default "us-east-1" }}
+            - name: GLOBAL_SECRET_KEYS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.existingSecret }}
+                  key: access_key
+            - name: GLOBAL_SECRET_KEYS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.existingSecret }}
+                  key: secret_key
+            - name: EXPORTER_PORT
+              value: "{{ .Values.exporter.port }}"
+            - name: EXPORTER_CHECK_INTERVAL_SECONDS
+              value: "{{ .Values.exporter.checkIntervalSeconds }}"
+
+          {{- range $index, $file := .Values.files }}
+            - name: FILE_{{ $index }}_KEY
+              value: {{ $file.key | quote }}
+            {{- if $file.bucket }}
+            - name: FILE_{{ $index }}_BUCKET
+              value: {{ $file.bucket | quote }}
+            {{- end }}
           {{- end }}
+
           # {{- with .Values.livenessProbe }}
           # livenessProbe:
           #   {{- toYaml . | nindent 12 }}
