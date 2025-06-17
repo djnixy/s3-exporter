@@ -64,25 +64,24 @@ spec:
             - name: EXPORTER_CHECK_INTERVAL_SECONDS
               value: "{{ .Values.exporter.checkIntervalSeconds }}"
 
-          {{- range $i, $f := .Values.files }}
+            {{- range $i, $f := .Values.files }}
             - name: FILE_{{ $i }}_KEY
               value: {{ $f.key | quote }}
             {{- if $f.bucket }}
             - name: FILE_{{ $i }}_BUCKET
               value: {{ $f.bucket | quote }}
             {{- end }}
+            {{- end }}
+
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
           {{- end }}
-
-
-          # {{- with .Values.livenessProbe }}
-          # livenessProbe:
-          #   {{- toYaml . | nindent 12 }}
-          # {{- end }}
-          # {{- with .Values.readinessProbe }}
-          # readinessProbe:
-          #   {{- toYaml . | nindent 12 }}
-          # {{- end }}
-          # {{- with .Values.resources }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
