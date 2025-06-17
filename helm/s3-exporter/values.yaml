@@ -100,7 +100,6 @@ ingress:
 startupProbe:
   httpGet:
     path: /metrics
-    port: 8069
   initialDelaySeconds: 5
   periodSeconds: 5
   timeoutSeconds: 2
