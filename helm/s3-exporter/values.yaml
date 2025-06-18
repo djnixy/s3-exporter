@@ -29,7 +29,6 @@ resources:
   limits:
     memory: 50Mi
   requests:
-    cpu: 50m
     memory: 50Mi
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
