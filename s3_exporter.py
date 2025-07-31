@@ -60,7 +60,8 @@ def update_metrics(s3, files, default_bucket, prefix):
         key = f"{prefix}{file['key']}"
         try:
             response = s3.head_object(Bucket=bucket, Key=key)
-            last_modified = response['LastModified'].replace(tzinfo=timezone.utc).timestamp()
+            # last_modified = response['LastModified'].replace(tzinfo=timezone.utc).timestamp()
+            last_modified = response['LastModified'].timestamp()
             last_modified_metric.labels(bucket=bucket, key=key).set(last_modified)
             print(f"✅ {bucket}/{key} -> {last_modified}")
         except Exception as e:
